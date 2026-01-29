@@ -1,16 +1,18 @@
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Exclude } from 'class-transformer';
 
-@Entity()
+@Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ unique: true })
   username: string;
 
-  @Column()
+  @Exclude()
+  @Column({ nullable: false })
   password: string;
 
-  @Column({ default: 'user' }) // Default role-nya 'user'
+  @Column({ default: 'user' })
   role: string;
 }

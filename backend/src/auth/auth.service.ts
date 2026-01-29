@@ -1,40 +1,71 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { LoginDto } from './login.dto';
+import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private jwtService: JwtService,
   ) {}
 
   // --- REGISTER ---
   async register(data: any) {
-    return this.usersRepository.save(data);
+    const exist = await this.usersRepository.findOneBy({ username: data.username });
+    if (exist) {
+      throw new BadRequestException('Username sudah digunakan!');
+    }
+
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const user = this.usersRepository.create({
+      username: data.username,
+      password: hashedPassword,
+      role: data.role ?? 'user',
+    });
+
+    const saved = await this.usersRepository.save(user);
+
+    // jangan balikin password ke frontend
+    const { password, ...result } = saved;
+    return result;
   }
 
-  // --- LOGIN (LOGIKA BARU) ---
+  // --- LOGIN ---
   async login(data: LoginDto) {
-    // 1. Cari user berdasarkan username
     const user = await this.usersRepository.findOneBy({ username: data.username });
 
-    // 2. Cek apakah user ketemu?
     if (!user) {
       throw new UnauthorizedException('Username tidak ditemukan!');
     }
 
-    // 3. Cek apakah password cocok?
-    if (user.password !== data.password) {
-      throw new UnauthorizedException('Password salah bos!');
+    const passwordValid = await bcrypt.compare(data.password, user.password);
+    if (!passwordValid) {
+      throw new UnauthorizedException('Password salah!');
     }
 
-    // 4. Kalau semua benar, kembalikan data user
+    // payload token
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+    };
+
+    const access_token = await this.jwtService.signAsync(payload);
+
     return {
       status: 'Berhasil Login',
-      data: user
+      access_token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      },
     };
   }
 }
