@@ -4,6 +4,8 @@ import Dashboard from './pages/Dashboard';
 import MeetingRooms from './pages/MeetingRooms';
 import RoomSchedule from './pages/RoomSchedule'; // <--- Pastikan ini ada
 import Profile from './pages/Profile';
+import AddBooking from './pages/AddBooking';
+import RoomDetails from './pages/RoomDetails';
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
         {/* 👇 INI YANG KEMUNGKINAN HILANG/LUPA DIPASANG */}
         <Route path="/room-schedule" element={<RoomSchedule />} /> 
         <Route path="/profile" element={<Profile />} />
+        <Route path="/add-booking" element={<AddBooking />} /> {/* <--- Tambah Route ini */}
+        <Route path="/room-details" element={<RoomDetails />} />
       </Routes>
     </Router>
   );

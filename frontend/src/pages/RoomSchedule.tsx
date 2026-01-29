@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   LayoutGrid, Users, Calendar, User, LogOut, 
-  Search, Pencil, Trash2, CheckCircle, Clock 
+  Search, Pencil, Trash2, 
 } from 'lucide-react'; 
 import { useNavigate } from 'react-router-dom';
 
