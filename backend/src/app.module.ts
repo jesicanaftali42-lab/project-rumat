@@ -8,6 +8,7 @@ import { ContactModule } from './contact/contact.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { SeedModule } from './seed/seed.module'; // ✅ tambah ini
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ContactModule,
     RoomsModule,
     BookingsModule,
-    DashboardModule, // ✅ dashboard module
+    DashboardModule,
+    SeedModule, // ✅ seed module biar rooms otomatis ada
   ],
   controllers: [AppController],
   providers: [AppService],

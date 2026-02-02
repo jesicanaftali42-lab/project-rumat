@@ -6,12 +6,14 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../auth/user.entity';
 import { Room } from '../rooms/room.entity';
 import { BookingStatus } from './booking-status.enum';
 
 @Entity('bookings')
+@Index(['meetingDate'])
 export class Booking {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -42,6 +44,16 @@ export class Booking {
   @Column()
   @ApiProperty({ example: '10:00' })
   endTime: string;
+
+  // ✅ buat UI "Seksi" misal SIT / SIS / HC
+  @Column({ nullable: true })
+  @ApiProperty({ example: 'SIT', required: false })
+  department?: string;
+
+  // ✅ buat UI "Sesi" misal Pagi / Siang / Sore
+  @Column({ nullable: true })
+  @ApiProperty({ example: 'Pagi', required: false })
+  session?: string;
 
   @Column({ nullable: true })
   @ApiProperty({ example: 'Diskusi project', required: false })

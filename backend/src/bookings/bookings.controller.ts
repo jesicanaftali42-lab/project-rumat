@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
+import { GetScheduleDto } from './dto/get-schedule.dto';
 
 @ApiTags('Bookings')
 @ApiBearerAuth()
@@ -37,12 +39,20 @@ export class BookingsController {
     return this.service.myBookings(userId);
   }
 
-  // ✅ ADMIN (sementara semua user bisa lihat dulu, nanti kita bikin role guard)
+  // ✅ Schedule (buat tab Schedule di frontend)
+  // contoh: /bookings/schedule?date=2026-01-30&floor=6
+  @Get('schedule')
+  getSchedule(@Query() query: GetScheduleDto) {
+    return this.service.getSchedule(query);
+  }
+
+  // ✅ Semua booking (buat admin panel / schedule list)
   @Get()
   findAll() {
     return this.service.findAll();
   }
 
+  // ⚠️ taruh ini di bawah schedule biar ga ketabrak route
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.service.findOne(Number(id));
