@@ -1,8 +1,8 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './user.entity';
-import { LoginDto } from './login.dto';
+import { User } from './user.entity'; // Pastikan path ini benar
+import { LoginDto } from './login.dto'; // Pastikan path ini benar
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
@@ -58,14 +58,14 @@ export class AuthService {
 
     const access_token = await this.jwtService.signAsync(payload);
 
+    // === BAGIAN INI SAYA UBAH BIAR FRONTEND LANGSUNG BACA ===
     return {
       status: 'Berhasil Login',
-      access_token,
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-      },
+      access_token: access_token,
+      // Kita taruh di luar (jangan dibungkus objek 'user' lagi)
+      id: user.id,       
+      username: user.username,
+      role: user.role,    
     };
   }
 }

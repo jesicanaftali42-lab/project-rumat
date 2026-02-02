@@ -8,16 +8,15 @@ import { ContactModule } from './contact/contact.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { SeedModule } from './seed/seed.module'; // ✅ tambah ini
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',
-      port: 5433,
+      port: 5432,
       username: 'postgres',
-      password: 'Nikitalulu26',
+      password: 'Jesica23',
       database: 'rumat_db',
       autoLoadEntities: true,
       synchronize: true,
@@ -27,8 +26,7 @@ import { SeedModule } from './seed/seed.module'; // ✅ tambah ini
     ContactModule,
     RoomsModule,
     BookingsModule,
-    DashboardModule,
-    SeedModule, // ✅ seed module biar rooms otomatis ada
+    DashboardModule, // ✅ dashboard module
   ],
   controllers: [AppController],
   providers: [AppService],
