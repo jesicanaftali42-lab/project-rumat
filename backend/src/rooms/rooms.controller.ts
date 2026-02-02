@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -31,6 +32,13 @@ export class RoomsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.service.findOne(Number(id));
+  }
+
+  // ✅ availability room per tanggal
+  // contoh: GET /rooms/1/availability?date=2026-01-30
+  @Get(':id/availability')
+  availability(@Param('id') id: string, @Query('date') date: string) {
+    return this.service.getAvailability(Number(id), date);
   }
 
   // ✅ hanya admin & super_admin boleh create room
