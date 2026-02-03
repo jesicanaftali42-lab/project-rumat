@@ -1,9 +1,10 @@
-import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+
 import { AuthService } from './auth.service';
 import { CreateUserDto } from './create-user.dto';
 import { LoginDto } from './login.dto';
-import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -20,11 +21,16 @@ export class AuthController {
     return this.authService.login(data);
   }
 
-  // endpoint untuk ambil data user dari token
+  // ✅ endpoint untuk ambil data user dari token
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   me(@Req() req: any) {
-    return req.user; // payload jwt
+    // req.user berasal dari jwt.strategy validate()
+    return {
+      id: req.user.sub,
+      username: req.user.username,
+      role: req.user.role,
+    };
   }
 }

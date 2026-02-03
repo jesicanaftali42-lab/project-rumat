@@ -26,6 +26,23 @@ export class CreateBookingDto {
   @IsString()
   endTime: string;
 
+  // ✅ dropdown department (master)
+  @ApiProperty({ example: 1, required: false })
+  @IsOptional()
+  @IsNumber()
+  departmentId?: number;
+
+  // ✅ backward compatibility (kalau FE masih kirim string)
+  @ApiProperty({ example: 'SIT', required: false })
+  @IsOptional()
+  @IsString()
+  department?: string;
+
+  @ApiProperty({ example: 'Pagi', required: false })
+  @IsOptional()
+  @IsString()
+  session?: string;
+
   @ApiProperty({ example: 'Diskusi project', required: false })
   @IsOptional()
   @IsString()

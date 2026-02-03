@@ -8,9 +8,11 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
+
 import { User } from '../auth/user.entity';
 import { Room } from '../rooms/room.entity';
 import { BookingStatus } from './booking-status.enum';
+import { Department } from '../departments/department.entity'; // ✅ NEW
 
 @Entity('bookings')
 @Index(['meetingDate'])
@@ -29,6 +31,11 @@ export class Booking {
   @ApiProperty()
   room: Room;
 
+  // ✅ relasi ke master department (dropdown)
+  @ManyToOne(() => Department, { eager: true, nullable: true, onDelete: 'SET NULL' })
+  @ApiProperty({ required: false })
+  departmentRef?: Department;
+
   @Column()
   @ApiProperty({ example: 'Vendor Discussion' })
   meetingTitle: string;
@@ -45,12 +52,11 @@ export class Booking {
   @ApiProperty({ example: '10:00' })
   endTime: string;
 
-  // ✅ buat UI "Seksi" misal SIT / SIS / HC
+  // ✅ tetap dipakai untuk backward compatibility (dashboard lama)
   @Column({ nullable: true })
   @ApiProperty({ example: 'SIT', required: false })
   department?: string;
 
-  // ✅ buat UI "Sesi" misal Pagi / Siang / Sore
   @Column({ nullable: true })
   @ApiProperty({ example: 'Pagi', required: false })
   session?: string;
