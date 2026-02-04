@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
@@ -43,13 +42,15 @@ export class AuthService {
     });
   }
 
-  // ✅ REGISTER (default always USER)
+  // ✅ REGISTER (default role = user)
   async register(data: CreateUserDto) {
     const exist = await this.usersRepository.findOneBy({
       username: data.username,
     });
 
-    if (exist) throw new BadRequestException('Username sudah digunakan!');
+    if (exist) {
+      throw new BadRequestException('Username sudah digunakan!');
+    }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
@@ -68,26 +69,31 @@ export class AuthService {
     };
   }
 
-  // ✅ LOGIN (return access_token + refresh_token)
+  // ✅ LOGIN
   async login(data: LoginDto) {
     const user = await this.usersRepository.findOneBy({
       username: data.username,
     });
 
-    if (!user) throw new UnauthorizedException('Username tidak ditemukan!');
+    if (!user) {
+      throw new UnauthorizedException('Username tidak ditemukan!');
+    }
 
     const passwordValid = await bcrypt.compare(data.password, user.password);
-    if (!passwordValid) throw new UnauthorizedException('Password salah!');
+    if (!passwordValid) {
+      throw new UnauthorizedException('Password salah!');
+    }
 
     const access_token = await this.signAccessToken(user);
     const refresh_token = await this.signRefreshToken(user);
 
-    // ✅ simpan refresh token HASH ke DB
+    // Simpan refresh token hash ke DB
     const refreshTokenHash = await bcrypt.hash(refresh_token, 10);
     await this.usersRepository.update(user.id, {
       refreshTokenHash,
     } as any);
 
+    // ⬇️ Response dibuat sederhana agar frontend mudah baca
     return {
       status: 'Berhasil Login',
       access_token,
@@ -101,19 +107,23 @@ export class AuthService {
   // ✅ REFRESH TOKEN
   async refreshToken(userId: number, refreshToken: string) {
     const user = await this.usersRepository.findOneBy({ id: userId });
-    if (!user) throw new UnauthorizedException('User not found');
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
 
-    // cek refresh token cocok atau tidak
     const hash = (user as any).refreshTokenHash;
-    if (!hash) throw new UnauthorizedException('Refresh token tidak ditemukan');
+    if (!hash) {
+      throw new UnauthorizedException('Refresh token tidak ditemukan');
+    }
 
     const valid = await bcrypt.compare(refreshToken, hash);
-    if (!valid) throw new UnauthorizedException('Refresh token invalid');
+    if (!valid) {
+      throw new UnauthorizedException('Refresh token invalid');
+    }
 
     const access_token = await this.signAccessToken(user);
     const new_refresh_token = await this.signRefreshToken(user);
 
-    // update hash refresh token
     const newHash = await bcrypt.hash(new_refresh_token, 10);
     await this.usersRepository.update(user.id, {
       refreshTokenHash: newHash,

@@ -12,14 +12,17 @@ import { BookingsModule } from './bookings/bookings.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DepartmentsModule } from './departments/departments.module';
 
+// UsersModule saya hilangkan dulu biar gak error
+// import { UsersModule } from './users/users.module';
+
 @Module({
   imports: [
-    // ✅ Load .env globally (bisa dipakai semua module)
+    // Load .env secara global
     ConfigModule.forRoot({
       isGlobal: true,
     }),
 
-    // ✅ PostgreSQL Config pakai .env
+    // Konfigurasi PostgreSQL via .env
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -31,7 +34,7 @@ import { DepartmentsModule } from './departments/departments.module';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: true, // ⚠️ dev only. (kalau production = false)
+        synchronize: true, // ⚠️ DEV ONLY
       }),
     }),
 
