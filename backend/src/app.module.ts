@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -10,32 +9,25 @@ import { ContactModule } from './contact/contact.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { DepartmentsModule } from './departments/departments.module';
-
-// UsersModule saya hilangkan dulu biar gak error
-// import { UsersModule } from './users/users.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
-    // Load .env secara global
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
-
-    // Konfigurasi PostgreSQL via .env
+    ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: config.get<string>('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.get<string>('DB_USERNAME'),
-        password: config.get<string>('DB_PASSWORD'),
-        database: config.get<string>('DB_NAME'),
-        autoLoadEntities: true,
-        synchronize: true, // ⚠️ DEV ONLY
-      }),
+        host: config.get<string>('DB_HOST', '127.0.0.1'),
+        port: Number(config.get<number>('DB_PORT', 5432)),
+        username: config.get<string>('DB_USERNAME', 'postgres'),
+        password: config.get<string>('DB_PASSWORD', ''),
+        database: config.get<string>('DB_DATABASE', 'rumat_db'),
+        autoLoadEntities: config.get<string>('DB_AUTO_LOAD_ENTITIES', 'true') === 'true',
+        synchronize: config.get<string>('DB_SYNCHRONIZE', 'true') === 'true',
+        ssl: config.get<string>('DB_SSL', 'false') === 'true',
+      })
     }),
 
     AuthModule,
@@ -43,7 +35,7 @@ import { DepartmentsModule } from './departments/departments.module';
     RoomsModule,
     BookingsModule,
     DashboardModule,
-    DepartmentsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

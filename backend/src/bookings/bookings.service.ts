@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Booking } from './booking.entity';
 import { User } from '../auth/user.entity';
 import { Room } from '../rooms/room.entity';
+import { Department } from '../departments/department.entity';
 
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingStatus } from './booking-status.enum';
@@ -16,7 +17,6 @@ import { GetScheduleDto } from './dto/get-schedule.dto';
 import { QueryBookingsDto } from './dto/query-bookings.dto';
 import { UpdateBookingInfoDto } from './dto/update-booking-info.dto';
 import { BookingResponseDto } from './dto/booking-response.dto';
-import { Department } from '../departments/department.entity';
 
 @Injectable()
 export class BookingsService {
@@ -34,7 +34,7 @@ export class BookingsService {
     private readonly departmentRepo: Repository<Department>,
   ) {}
 
-  // ✅ mapper biar response konsisten (frontend-friendly)
+  // ✅ MAPPER (UPDATE: Tambah Data User Lengkap)
   private toResponse(b: Booking): BookingResponseDto {
     return {
       id: b.id,
@@ -53,38 +53,43 @@ export class BookingsService {
         name: b.room?.name,
         floor: b.room?.floor,
       },
+      // 👇 PERBAIKAN DISINI: Sertakan Data Profil User!
       user: {
         id: b.user?.id,
         username: b.user?.username,
         role: b.user?.role,
+        fullName: b.user?.fullName, // Biar muncul nama asli
+        division: b.user?.division, // Biar kolom Divisi di tabel Admin gak N/A
+        avatar: b.user?.avatar,     // Biar foto profil muncul (opsional)
       },
     };
   }
 
-  // ✅ ADMIN: stats booking untuk dashboard (cards summary)
+  // ✅ ADMIN: Stats Dashboard
   async adminStats() {
     const total = await this.bookingRepo.count();
-
-    const pending = await this.bookingRepo.count({
-      where: { status: BookingStatus.PENDING },
-    });
-
-    const approved = await this.bookingRepo.count({
-      where: { status: BookingStatus.APPROVED },
-    });
-
-    const rejected = await this.bookingRepo.count({
-      where: { status: BookingStatus.REJECTED },
-    });
-
-    const done = await this.bookingRepo.count({
-      where: { status: BookingStatus.DONE },
-    });
+    const pending = await this.bookingRepo.count({ where: { status: BookingStatus.PENDING } });
+    const approved = await this.bookingRepo.count({ where: { status: BookingStatus.APPROVED } });
+    const rejected = await this.bookingRepo.count({ where: { status: BookingStatus.REJECTED } });
+    const done = await this.bookingRepo.count({ where: { status: BookingStatus.DONE } });
 
     return { total, pending, approved, rejected, done };
   }
 
-  // USER: buat booking
+  // ✅ ADMIN & DASHBOARD: Ambil Semua Data
+  async findAll() {
+    const bookings = await this.bookingRepo.find({
+      relations: ['user', 'room'], 
+      order: {
+        meetingDate: 'DESC', // Ubah ke DESC biar yang terbaru muncul duluan
+        startTime: 'ASC',
+      },
+    });
+
+    return bookings.map((b) => this.toResponse(b));
+  }
+
+  // ✅ USER: Create Booking
   async create(userId: number, dto: CreateBookingDto) {
     const user = await this.userRepo.findOneBy({ id: userId });
     if (!user) throw new NotFoundException('User not found');
@@ -92,6 +97,7 @@ export class BookingsService {
     const room = await this.roomRepo.findOneBy({ id: dto.roomId });
     if (!room) throw new NotFoundException('Room not found');
 
+    // Cek Bentrok Jadwal
     const conflict = await this.bookingRepo
       .createQueryBuilder('b')
       .leftJoin('b.room', 'room')
@@ -110,7 +116,7 @@ export class BookingsService {
       throw new BadRequestException('Room sudah dibooking pada jam tersebut');
     }
 
-    // ✅ resolve department dari dropdown (opsional)
+    // Resolve Department (Opsional)
     let departmentRef: Department | null = null;
     if ((dto as any).departmentId) {
       departmentRef = await this.departmentRepo.findOneBy({
@@ -122,36 +128,36 @@ export class BookingsService {
     const booking = new Booking();
     booking.user = user;
     booking.room = room;
-
     booking.meetingTitle = dto.meetingTitle;
     booking.meetingDate = dto.meetingDate;
     booking.startTime = dto.startTime;
     booking.endTime = dto.endTime;
 
-    // ✅ set department dropdown
     (booking as any).departmentRef = departmentRef ?? undefined;
     booking.department = departmentRef?.code ?? dto.department;
 
     booking.session = dto.session;
     booking.notes = dto.notes;
-
     booking.status = BookingStatus.PENDING;
 
     const saved = await this.bookingRepo.save(booking);
-    return this.toResponse(saved);
+    // Return respons lengkap dengan relasi (perlu fetch ulang atau construct manual)
+    // Cara cepat: construct manual karena object user & room sudah ada
+    return this.toResponse({ ...saved, user, room } as Booking);
   }
 
-  // USER: lihat booking sendiri
+  // ✅ USER: My Bookings
   async myBookings(userId: number) {
     const rows = await this.bookingRepo.find({
       where: { user: { id: userId } },
+      relations: ['user', 'room'],
       order: { createdAt: 'DESC' },
     });
 
     return rows.map((b) => this.toResponse(b));
   }
 
-  // ✅ Schedule untuk tab Schedule di frontend
+  // ✅ PUBLIC: Schedule View
   async getSchedule(query: GetScheduleDto) {
     const { date, floor } = query;
 
@@ -172,7 +178,7 @@ export class BookingsService {
     return data.map((b) => this.toResponse(b));
   }
 
-  // ✅ ADMIN: list booking lengkap (pagination + filter + search)
+  // ✅ ADMIN: Advanced Find
   async findAllAdmin(query: QueryBookingsDto) {
     const page = Number(query.page || 1);
     const limit = Math.min(Number(query.limit || 10), 100);
@@ -185,12 +191,9 @@ export class BookingsService {
 
     if (query.status) qb.andWhere('b.status = :status', { status: query.status });
     if (query.date) qb.andWhere('b.meetingDate = :date', { date: query.date });
-    if (query.floor)
-      qb.andWhere('room.floor = :floor', { floor: Number(query.floor) });
-    if (query.roomId)
-      qb.andWhere('room.id = :roomId', { roomId: Number(query.roomId) });
-    if (query.department)
-      qb.andWhere('b.department = :department', { department: query.department });
+    if (query.floor) qb.andWhere('room.floor = :floor', { floor: Number(query.floor) });
+    if (query.roomId) qb.andWhere('room.id = :roomId', { roomId: Number(query.roomId) });
+    if (query.department) qb.andWhere('b.department = :department', { department: query.department });
 
     if (query.search) {
       qb.andWhere(
@@ -227,28 +230,25 @@ export class BookingsService {
     return booking;
   }
 
-  // ✅ ADMIN: edit booking info (department/session/notes)
+  // ✅ ADMIN: Update Info Booking
   async updateBookingInfo(id: number, dto: UpdateBookingInfoDto) {
     const booking = await this.findOne(id);
-
     if (dto.department !== undefined) booking.department = dto.department;
     if (dto.session !== undefined) booking.session = dto.session;
     if (dto.notes !== undefined) booking.notes = dto.notes;
-
     const saved = await this.bookingRepo.save(booking);
     return this.toResponse(saved);
   }
 
-  // ✅ ADMIN: approve/reject/done
+  // ✅ ADMIN: Approve/Reject
   async updateStatus(id: number, status: BookingStatus) {
     const booking = await this.findOne(id);
     booking.status = status;
-
     const saved = await this.bookingRepo.save(booking);
     return this.toResponse(saved);
   }
 
-  // ✅ DELETE booking
+  // ✅ ADMIN/USER: Hapus Booking
   async remove(id: number, userId: number, role: string) {
     const booking = await this.bookingRepo.findOne({
       where: { id },
@@ -259,9 +259,7 @@ export class BookingsService {
 
     if (role === 'user') {
       if (booking.user.id !== userId) {
-        throw new BadRequestException(
-          'Kamu tidak boleh menghapus booking orang lain',
-        );
+        throw new BadRequestException('Kamu tidak boleh menghapus booking orang lain');
       }
     }
 

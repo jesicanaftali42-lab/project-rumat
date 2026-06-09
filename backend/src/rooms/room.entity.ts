@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm'; 
+import { Booking } from '../bookings/booking.entity'; 
 
 @Entity('rooms')
 export class Room {
@@ -19,12 +20,22 @@ export class Room {
   @ApiProperty({ example: 20 })
   capacity: number;
 
-  // ✅ ini yang dimaksud mentor: facilities bentuk array/list
-  @Column('text', { array: true, default: [] })
+  // ✅ KHUSUS POSTGRESQL: Gunakan tipe 'text' dengan opsi array: true
+  // Ini jauh lebih canggih daripada 'simple-array' milik MySQL
+  @Column('text', { array: true, default: [] }) 
   @ApiProperty({ example: ['TV', 'AC', 'WiFi'], isArray: true })
   facilities: string[];
 
   @Column({ default: true })
   @ApiProperty({ example: true })
   isAvailable: boolean;
+
+  // 👇 Kolom untuk menyimpan link gambar
+  @Column({ nullable: true }) 
+  @ApiProperty({ example: 'http://localhost:3000/uploads/foto.jpg', required: false })
+  image_url: string;
+
+  // 👇 Relasi ke Booking
+  @OneToMany(() => Booking, (booking) => booking.room)
+  bookings: Booking[];
 }

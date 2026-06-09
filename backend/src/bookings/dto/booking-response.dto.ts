@@ -11,6 +11,16 @@ class BookingUserDto {
   @ApiProperty() id: number;
   @ApiProperty() username: string;
   @ApiProperty() role: string;
+
+  // 👇 INI YANG SAYA TAMBAHKAN SUPAYA TIDAK ERROR LAGI
+  @ApiProperty({ required: false, nullable: true }) 
+  fullName?: string;
+
+  @ApiProperty({ required: false, nullable: true }) 
+  division?: string;
+
+  @ApiProperty({ required: false, nullable: true }) 
+  avatar?: string;
 }
 
 export class BookingResponseDto {

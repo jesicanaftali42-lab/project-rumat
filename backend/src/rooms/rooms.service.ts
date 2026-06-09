@@ -27,7 +27,7 @@ export class RoomsService {
     return this.repo.find();
   }
 
-  // ✅ list lantai unik (buat dropdown frontend)
+  // ✅ List lantai unik (buat dropdown frontend)
   async getFloors() {
     const rows = await this.repo
       .createQueryBuilder('room')
@@ -83,13 +83,19 @@ export class RoomsService {
     return this.findOne(id);
   }
 
+  // 🔥 PERBAIKAN: Hapus booking terkait dulu sebelum hapus ruangan
   async remove(id: number) {
-    await this.findOne(id);
+    await this.findOne(id); // Cek exist
+    
+    // Hapus booking dulu biar gak error Foreign Key
+    await this.bookingRepo.delete({ room: { id } });
+    
+    // Baru hapus ruangannya
     await this.repo.delete(id);
     return { message: 'Room deleted' };
   }
 
-  // ✅ availability per 1 room
+  // ✅ Availability per 1 room
   async getAvailability(roomId: number, date: string) {
     const room = await this.findOne(roomId);
 
@@ -125,6 +131,8 @@ export class RoomsService {
         id: room.id,
         name: room.name,
         floor: room.floor,
+        // 👇 TAMBAHAN PENTING: Sertakan URL gambar
+        image_url: room.image_url, 
       },
       date,
       morningAvailable: !morningBooked,
@@ -205,6 +213,8 @@ export class RoomsService {
           capacity: room.capacity,
           facilities: room.facilities,
           isAvailable: room.isAvailable,
+          // 👇 TAMBAHAN PENTING: Sertakan URL gambar disini juga
+          image_url: room.image_url, 
         },
         date,
         morningAvailable: !morningBooked,

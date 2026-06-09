@@ -51,11 +51,22 @@ export class BookingsController {
     return this.service.adminStats();
   }
 
-  @UseGuards(new RolesGuard(['admin', 'super_admin']))
+  // 👇👇👇 BAGIAN INI YANG KITA PERBAIKI 👇👇👇
+  // 1. Kita hapus UseGuards Admin di sini biar User biasa bisa akses Dashboard
   @Get()
-  findAllAdmin(@Query() query: QueryBookingsDto) {
-    return this.service.findAllAdmin(query);
+  findAll(@Query() query: any) {
+    // 2. Cek Logic: Apakah ini request dari Table Admin (ada page/limit)?
+    const isAdminQuery = query.page || query.limit || query.search || query.status || query.floor;
+
+    if (isAdminQuery) {
+      // Kalau request complex, panggil service Admin
+      return this.service.findAllAdmin(query);
+    }
+
+    // Kalau request polos (Dashboard), panggil service User (yang ada relasi user & room)
+    return this.service.findAll();
   }
+  // 👆👆👆 SELESAI PERBAIKAN 👆👆👆
 
   @Get(':id')
   findOne(@Param('id') id: string) {
