@@ -1,35 +1,80 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Search, Bell, User } from 'lucide-react';
+import { ChevronLeft, Search, Bell, Loader2 } from 'lucide-react';
+import axios from 'axios';
+import { string } from 'yup';
 
 export default function ListBooking() {
   const navigate = useNavigate();
 
-  // Data Dummy (Nanti diganti data dari Database)
-  const bookings = [
-    { no: 1, nama: 'Safira', seksi: 'SIT', tanggal: 'Selasa, 2 Desember', sesi: 'Pagi', waktu: '09:00-10:30 AM', judul: 'Meeting bersama vendor', lokasi: 'Lantai 6', ruangan: 'Regular text column', status: 'Complete' },
-    { no: 2, nama: 'Sandra', seksi: 'SIS', tanggal: 'Selasa, 2 Desember', sesi: 'Siang', waktu: '01:00-02:30 PM', judul: 'Meeting bersama vendor', lokasi: 'Lantai 7', ruangan: 'Regular text column', status: 'Booked' },
-    { no: 3, nama: 'Sandra', seksi: 'SIS', tanggal: 'Rabu, 3 Desember', sesi: 'Siang', waktu: '01:00-02:30 PM', judul: 'Meeting bersama vendor', lokasi: 'Lantai 7', ruangan: 'Regular text column', status: 'Waiting Approval' },
-  ];
+  // --- STATE ---
+  const [adminName, setAdminName] = useState("Admin");
+  const [bookings, setBookings] = useState<any[]>([]); // Data Asli
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState(""); // Fitur Search
 
-  // Helper untuk warna status
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Complete': return 'bg-green-100 text-green-600';
-      case 'Booked': return 'bg-orange-100 text-orange-600';
-      case 'Waiting Approval': return 'bg-gray-100 text-gray-600';
-      default: return 'bg-gray-100 text-gray-600';
+  // --- FETCH DATA ---
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const userString = sessionStorage.getItem('user');
+    if (!userString) return navigate('/');
+    
+    const userData = JSON.parse(userString);
+    if (userData.role !== 'admin' && userData.role !== 'super_admin') {
+        navigate('/dashboard'); return;
+    }
+
+    setAdminName(userData.username || "Admin");
+    const token = userData.access_token;
+
+    try {
+        const response = await axios.get('http://localhost:3000/bookings', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // Sort data terbaru di atas
+        const sortedData = response.data.sort((a: any, b: any) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        setBookings(sortedData);
+    } catch (error) {
+        console.error("Gagal load data:", error);
+    } finally {
+        setLoading(false);
     }
   };
+
+  // Helper Warna Status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'APPROVED': return 'bg-green-100 text-green-600'; // Dulu 'Complete'
+      case 'PENDING': return 'bg-gray-100 text-gray-600';    // Dulu 'Waiting Approval'
+      case 'REJECTED': return 'bg-red-100 text-red-600';
+      default: return 'bg-orange-100 text-orange-600';
+    }
+  };
+
+  // Helper Format Jam (09:00:00 -> 09:00)
+  const formatTime = (time: string) => time ? time.substring(0, 5) : "-";
+
+  // Filter Data Berdasarkan Search
+  const filteredBookings = bookings.filter(item => 
+    item.user?.username?.toLowerCase().includes(search.toLowerCase()) ||
+    item.meetingTitle?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-800">
       
       {/* === HEADER === */}
-      <header className="flex justify-between items-center py-4 px-8 border-b border-gray-100">
+      <header className="flex justify-between items-center py-4 px-8 border-b border-gray-100 sticky top-0 bg-white z-10">
         <div className="flex items-center gap-2">
            <img src="/logo.png" alt="Logo" className="h-10" />
            <div className="flex flex-col">
-             <span className="text-xl font-bold text-blue-600">RuMate</span>
+             <span className="text-xl font-bold text-blue-600"></span>
              <span className="text-xs text-gray-500">Admin</span>
            </div>
         </div>
@@ -43,11 +88,11 @@ export default function ListBooking() {
             </button>
             <div className="flex items-center gap-3 pl-4 border-l">
                 <div className="text-right hidden sm:block">
-                    <p className="text-sm font-bold text-gray-700">Katie Pena</p>
+                    <p className="text-sm font-bold text-gray-700 capitalize">{adminName}</p>
                     <p className="text-xs text-gray-500">Admin</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-blue-100 overflow-hidden">
-                    <img src="/logo.png" alt="Profile" className="h-full w-full object-cover" />
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${adminName}`} alt="Profile" className="h-full w-full object-cover" />
                 </div>
             </div>
         </div>
@@ -67,7 +112,9 @@ export default function ListBooking() {
                 <input 
                     type="text" 
                     placeholder="Search for your booking" 
-                    className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:border-blue-500 bg-transparent"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:border-blue-500 bg-transparent transition"
                 />
             </div>
         </div>
@@ -78,10 +125,11 @@ export default function ListBooking() {
                 <thead>
                     <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase font-semibold">
                         <th className="p-4">No</th>
+                        <th className="p-4">Ref ID</th>
                         <th className="p-4">Nama Pemohon</th>
                         <th className="p-4">Seksi</th>
                         <th className="p-4">Tanggal Kegiatan</th>
-                        <th className="p-4">Sesi Kegiatan</th>
+                        {/* <th className="p-4">Sesi Kegiatan</th> */}
                         <th className="p-4">Waktu Kegiatan</th>
                         <th className="p-4">Judul Kegiatan</th>
                         <th className="p-4">Lokasi Ruangan</th>
@@ -90,24 +138,47 @@ export default function ListBooking() {
                     </tr>
                 </thead>
                 <tbody className="text-sm divide-y divide-gray-50">
-                    {bookings.map((item) => (
-                        <tr key={item.no} className="hover:bg-gray-50 transition">
-                            <td className="p-4 text-gray-500 font-medium">{item.no}</td>
-                            <td className="p-4 font-bold text-gray-800">{item.nama}</td>
-                            <td className="p-4 text-gray-600">{item.seksi}</td>
-                            <td className="p-4 text-gray-600">{item.tanggal}</td>
-                            <td className="p-4 text-gray-600">{item.sesi}</td>
-                            <td className="p-4 text-gray-600">{item.waktu}</td>
-                            <td className="p-4 text-gray-400 text-xs max-w-[150px] leading-tight">{item.judul}</td>
-                            <td className="p-4 text-gray-600">{item.lokasi}</td>
-                            <td className="p-4 text-gray-400">{item.ruangan}</td>
-                            <td className="p-4">
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(item.status)}`}>
-                                    {item.status}
-                                </span>
-                            </td>
-                        </tr>
-                    ))}
+                    {loading ? (
+                        <tr><td colSpan={10} className="p-10 text-center"><Loader2 className="animate-spin mx-auto"/></td></tr>
+                    ) : filteredBookings.length === 0 ? (
+                        <tr><td colSpan={10} className="p-10 text-center text-gray-400">Tidak ada data booking.</td></tr>
+                    ) : (
+                        filteredBookings.map((item, index) => (
+                            <tr key={item.id} className="hover:bg-gray-50 transition">
+                                <td className="p-4 text-gray-500 font-medium">{index + 1}</td>
+                                <td className='p-4'>
+                                    <span className='bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono text-xs font-bold tracking-widest'>
+                                        #{String(item.id).padStart(5, '0')}
+                                    </span>
+                                </td>
+                                <td className="p-4 font-bold text-gray-800 capitalize">
+                                    {item.user?.fullName || item.user?.username || "Unknown"}
+                                </td>
+                                <td className="p-4 text-gray-600 uppercase">
+                                    {item.user?.division || "-"}
+                                </td>
+                                <td className="p-4 text-gray-600">{item.meetingDate}</td>
+                                {/* <td className="p-4 text-gray-600 capitalize">{item.session || "-"}</td> */}
+                                <td className="p-4 text-gray-600">
+                                    {formatTime(item.startTime)} - {formatTime(item.endTime)}
+                                </td>
+                                <td className="p-4 text-gray-400 text-xs max-w-[150px] leading-tight truncate" title={item.meetingTitle}>
+                                    {item.meetingTitle}
+                                </td>
+                                <td className="p-4 text-gray-600">
+                                    Lantai {item.room?.floor || "-"}
+                                </td>
+                                <td className="p-4 text-gray-400">
+                                    {item.room?.name || "Unknown Room"}
+                                </td>
+                                <td className="p-4">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(item.status)}`}>
+                                        {item.status || "PENDING"}
+                                    </span>
+                                </td>
+                            </tr>
+                        ))
+                    )}
                 </tbody>
             </table>
         </div>

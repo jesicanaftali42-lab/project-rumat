@@ -3,17 +3,17 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { 
   LayoutGrid, Users, Calendar, User, LogOut, 
-  ArrowLeft, MapPin, Wifi, Monitor, Armchair, Mic, Coffee, Loader2
+  ArrowLeft, MapPin, Wifi, Monitor, Armchair, Loader2
 } from 'lucide-react';
 
 export default function RoomDetails() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { id } = useParams(); // Ambil ID dari URL
+  const { id } = useParams(); 
   
   // State Data Ruangan
   const [room, setRoom] = useState<any>(location.state?.room || null);
-  const [loading, setLoading] = useState(!location.state?.room); // Loading kalau data belum ada
+  const [loading, setLoading] = useState(!location.state?.room); 
 
   // State Slot Waktu (Masih Visual)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -22,24 +22,26 @@ export default function RoomDetails() {
   const morningSlots = ["07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30"];
   const afternoonSlots = ["01:00", "01:30", "02:00", "02:30", "03:00", "03:30", "04:00"];
 
-  // --- FETCH DATA (JIKA AKSES LANGSUNG DARI URL) ---
+  // --- FETCH DATA (JIKA AKSES LANGSUNG DARI URL / REFRESH) ---
   useEffect(() => {
     // Kalau room sudah ada dari state navigasi sebelumnya, gak usah fetch
     if (room) return; 
 
     const fetchRoomDetail = async () => {
         try {
-            const userString = localStorage.getItem("user");
+            const userString = sessionStorage.getItem("user");
             const token = userString ? JSON.parse(userString).access_token : null;
 
             const response = await axios.get(`http://localhost:3000/rooms/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            // Tambahkan gambar dummy jika dari DB belum ada gambar
+            // 🔥 PERBAIKAN DI SINI: Gunakan image_url dari backend
+            const dataFromBackend = response.data;
             const dataWithImg = {
-                ...response.data,
-                image: response.data.image || "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&fit=crop"
+                ...dataFromBackend,
+                // Pastikan ambil image_url, kalau null baru pakai dummy
+                image_url: dataFromBackend.image_url || "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&fit=crop"
             };
             
             setRoom(dataWithImg);
@@ -56,7 +58,6 @@ export default function RoomDetails() {
   }, [id, room, navigate]);
 
   // --- LOGIC HELPER: MENGELOMPOKKAN FASILITAS ---
-  // Database ngasih array ["Wifi", "AC", "TV"] -> Kita pecah ke kategori UI
   const categorizeFacility = (facilityList: string[]) => {
      const categories = {
         connectivity: [] as string[],
@@ -73,7 +74,6 @@ export default function RoomDetails() {
         } else if (lower.includes('tv') || lower.includes('lcd') || lower.includes('proyektor') || lower.includes('sound') || lower.includes('mic') || lower.includes('display')) {
             categories.presentation.push(item);
         } else {
-            // Sisanya masuk ke furnitur/ruangan (AC, Kursi, Papan Tulis, dll)
             categories.furniture.push(item);
         }
      });
@@ -102,8 +102,8 @@ export default function RoomDetails() {
       {/* --- SIDEBAR --- */}
       <aside className="w-64 bg-white p-6 flex flex-col border-r border-gray-100 sticky top-0 h-screen">
          <div className="flex items-center gap-2 mb-10 px-2">
-           <img src="/logo.png" alt="RuMate Logo" className="h-10 object-contain"/>
-           <span className="text-xl font-bold text-blue-600">RuMate</span>
+            <img src="/logo.png" alt="RuMate Logo" className="h-10 object-contain"/>
+            <span className="text-xl font-bold text-blue-600"></span>
         </div>
         <nav className="flex-1 space-y-2">
           <NavItem icon={<LayoutGrid size={20} />} label="Dashboard" onClick={() => navigate('/dashboard')} />
@@ -111,7 +111,7 @@ export default function RoomDetails() {
           <NavItem icon={<Calendar size={20} />} label="Room Schedule" onClick={() => navigate('/room-schedule')} />
           <NavItem icon={<User size={20} />} label="Profile" onClick={() => navigate('/profile')} />
         </nav>
-        <button onClick={() => {localStorage.clear(); navigate('/')}} className="flex items-center gap-3 text-gray-500 hover:text-red-500 transition-colors mt-auto pt-6 border-t">
+        <button onClick={() => {sessionStorage.clear(); navigate('/')}} className="flex items-center gap-3 text-gray-500 hover:text-red-500 transition-colors mt-auto pt-6 border-t">
           <LogOut size={20} />
           <span className="font-medium">Logout</span>
         </button>
@@ -134,18 +134,18 @@ export default function RoomDetails() {
             {/* KOLOM KIRI: Detail Ruangan */}
             <div className="flex-1">
                 {/* Gambar Besar */}
-<div className="w-full h-80 rounded-2xl overflow-hidden mb-6 shadow-sm border border-gray-200">
-    <img 
-        src={room.image || room.img || "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&fit=crop"} 
-        alt={room.name} 
-        className="w-full h-full object-cover"
-        // 👇 TAMBAHKAN INI (JURUS ANTI PECAH)
-        onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&fit=crop"; // Gambar cadangan kalau error
-        }}
-    />
-</div>
+                <div className="w-full h-80 rounded-2xl overflow-hidden mb-6 shadow-sm border border-gray-200">
+                    <img 
+                        // 🔥 PERBAIKAN: Prioritaskan room.image_url
+                        src={room.image_url || room.image || "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&fit=crop"} 
+                        alt={room.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&fit=crop"; 
+                        }}
+                    />
+                </div>
 
                 {/* Judul & Deskripsi */}
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">{room.name}</h1>
@@ -240,7 +240,6 @@ export default function RoomDetails() {
                         *Jadwal di atas hanya estimasi. Pastikan ketersediaan saat melakukan booking.
                     </p>
 
-                    {/* Tombol Book Now -> Arahkan ke form booking bawa data ID Ruangan */}
                     <button 
                         onClick={() => navigate('/add-booking', { 
                             state: { 
@@ -264,7 +263,6 @@ export default function RoomDetails() {
   );
 }
 
-// NavItem Reusable
 function NavItem({ icon, label, active = false, onClick }: any) {
     return (
       <div onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all ${active ? 'bg-orange-50 text-orange-500 font-bold' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}>

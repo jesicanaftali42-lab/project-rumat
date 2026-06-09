@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -22,34 +22,45 @@ export default function Login() {
         password: password.trim(),
       });
 
-      // --- Ambil token + user data dari response (fleksibel) ---
+      // --- Ambil token + user data dari response ---
       const token = response.data?.access_token;
       const userData = response.data?.user || response.data?.data || response.data;
 
       // --- Simpan token ---
       if (token) {
-        localStorage.setItem("token", token);
+        sessionStorage.setItem("token", token);
       }
 
       // --- Simpan data user ---
       if (userData) {
-        localStorage.setItem("user", JSON.stringify({ ...userData, access_token: token }));
-        localStorage.setItem("username", userData.username ?? username);
-        localStorage.setItem("role", userData.role ?? "");
+        // Simpan object user lengkap + token
+        sessionStorage.setItem("user", JSON.stringify({ ...userData, access_token: token }));
+        sessionStorage.setItem("username", userData.username ?? username);
+        
+        // Simpan Role (PENTING BUAT CEK USER/ADMIN)
+        const userRole = userData.role || "";
+        sessionStorage.setItem("role", userRole);
 
         if (userData.id !== undefined && userData.id !== null) {
-          localStorage.setItem("userId", String(userData.id));
+          sessionStorage.setItem("userId", String(userData.id));
         }
+
+        alert("Login Berhasil! Selamat datang, " + (userData?.username ?? username));
+
+        // 🔥🔥🔥 LOGIC REDIRECT FIX (SUPER ADMIN vs OTHERS) 🔥🔥🔥
+        if (userRole === "super_admin") {
+            // KHUSUS SUPER ADMIN -> Masuk ke Dashboard Gelap
+            navigate("/super-admin");
+        } else if (userRole === "admin") {
+             // Admin Biasa (Staff) -> Dashboard Admin (YANG BENAR)
+            navigate("/admin-dashboard"); 
+        } else {
+            // User Biasa -> Masuk ke Dashboard Putih
+            navigate("/dashboard");
+        }
+        // ----------------------------------------------------
       }
 
-      alert("Login Berhasil! Selamat datang, " + (userData?.username ?? username));
-
-      // --- Redirect by role ---
-      if (userData?.role === "admin") {
-        navigate("/admin-dashboard");
-      } else {
-        navigate("/dashboard");
-      }
     } catch (error: any) {
       console.error("Error Login:", error);
       const pesanError =
@@ -66,8 +77,20 @@ export default function Login() {
       <div className="w-full md:w-1/2 flex items-center justify-center px-6 md:px-24 py-12">
         <div className="w-full max-w-md">
           {/* LOGO */}
-          <div className="mb-10 flex justify-center md:justify-start">
-            <img src="/logo.png" alt="Logo RuMate" className="h-12 object-contain" />
+          <div className="mb-10 flex items-center justify-center md:justify-start gap-5">
+             {/* Pastikan file logo.png ada di folder public/ */}
+            <img 
+              src="/logo.png" 
+              alt="Logo RuMate" 
+              className="h-10 object-contain drop-shadow-sm" 
+            />
+
+            <div className="h-8 w-[2px] bg-gray-300 rounded-full"></div>
+
+            <img src="/inalum.png" alt="Logo Inalum" className="h-10 object-contain drop-shadow-sm"/>
+
+            {/* Fallback teks jika logo tidak ada */}
+            <span className="text-2xl font-bold text-blue-600 ml-2 hidden" style={{display: 'none'}}></span>
           </div>
 
           {/* CARD */}
@@ -129,7 +152,13 @@ export default function Login() {
 
       {/* === KANAN (BANNER) === */}
       <div className="hidden md:flex w-1/2 bg-blue-50 items-center justify-center overflow-hidden">
-        <img src="/banner-login.jpg" alt="Banner" className="w-full h-full object-cover" />
+        {/* Pastikan file banner-login.jpg ada di folder public/ */}
+        <img 
+          src="/banner-login.jpg" 
+          alt="Banner" 
+          className="w-full h-full object-cover" 
+          onError={(e) => e.currentTarget.style.display='none'}
+        />
       </div>
     </div>
   );
